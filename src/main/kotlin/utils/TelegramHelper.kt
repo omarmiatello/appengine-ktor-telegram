@@ -1,6 +1,7 @@
 package com.github.jacklt.gae.ktor.tg.utils
 
-import com.github.jacklt.gae.ktor.tg.appengine.TelegramApi
+import com.github.jacklt.gae.ktor.tg.appengine.telegram.TelegramApi
+
 
 class TelegramHelper(
     val chatId: String,

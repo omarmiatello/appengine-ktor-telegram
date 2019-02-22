@@ -1,7 +1,9 @@
 package com.github.jacklt.gae.ktor.tg
 
-import com.github.jacklt.gae.ktor.tg.appengine.TelegramApi
+import com.github.jacklt.gae.ktor.tg.appengine.telegram.UpdateMessageText
+import com.github.jacklt.gae.ktor.tg.appengine.telegram.WebhookUpdateMessage
 import com.github.jacklt.gae.ktor.tg.config.AppConfig
+import com.github.jacklt.gae.ktor.tg.utils.toJson
 import io.ktor.application.Application
 import io.ktor.application.call
 import io.ktor.application.install
@@ -9,7 +11,9 @@ import io.ktor.features.CallLogging
 import io.ktor.features.DefaultHeaders
 import io.ktor.features.StatusPages
 import io.ktor.http.ContentType
+import io.ktor.http.HttpStatusCode
 import io.ktor.request.receiveText
+import io.ktor.response.respond
 import io.ktor.response.respondText
 import io.ktor.routing.post
 import io.ktor.routing.route
@@ -42,16 +46,28 @@ fun Application.main() {
 
         route("webhook") {
             post("telegram") {
-                val request = JSON.nonstrict.parse(TelegramApi.UpdateMessageRequest.serializer(), call.receiveText())
-                call.respondText(
-                    JSON.stringify(
-                        TelegramApi.UpdateMessageResponse.serializer(),
-                        TelegramApi.UpdateMessageResponse(request.message.chat.id,
-                            request.message.text.toAppResponse()
-                        )
-                    ),
-                    ContentType.parse("application/json")
-                )
+                val request = JSON.nonstrict.parse(WebhookUpdateMessage.serializer(), call.receiveText())
+
+                when {
+                    request.message != null -> {
+                        val inputText = request.message.text
+                        if (inputText != null) {
+                            listOf<String>().asSequence()
+                            call.respondText(
+                                UpdateMessageText(
+                                    request.message.chat.id,
+                                    inputText.toAppResponse()
+                                ).toJson(UpdateMessageText.serializer()),
+                                ContentType.parse("application/json")
+                            )
+                        }
+                    }
+                    request.inline_query != null -> {
+                        // TODO handle
+                    }
+                }
+
+                if (call.response.status() == null) call.respond(HttpStatusCode.NoContent)
             }
         }
     }
