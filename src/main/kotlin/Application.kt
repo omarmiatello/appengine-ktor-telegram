@@ -2,7 +2,7 @@ package com.github.jacklt.gae.ktor.tg
 
 import com.github.jacklt.gae.ktor.tg.appengine.telegram.TelegramRequest
 import com.github.jacklt.gae.ktor.tg.appengine.telegram.Update
-import com.github.jacklt.gae.ktor.tg.utils.toJson
+import com.google.gson.Gson
 import io.ktor.application.Application
 import io.ktor.application.call
 import io.ktor.application.install
@@ -34,6 +34,12 @@ fun Application.main() {
 
     install(StatusPages)
 
+    val gson = Gson()
+    fun telegramMessage(chatId: Int, text: String) =
+        gson.toJsonTree(TelegramRequest.SendMessageRequest(chatId.toString(), text))
+            .apply { asJsonObject.addProperty("method", "sendMessage") }
+            .toString()
+
     // Registers routes
     routing {
         // For the root / route, we respond with an Html.
@@ -50,10 +56,7 @@ fun Application.main() {
                         val inputText = request.message.text
                         if (inputText != null) {
                             call.respondText(
-                                TelegramRequest.SendMessageRequest(
-                                    request.message.chat.id,
-                                    inputText.toAppResponse()
-                                ).toJson(TelegramRequest.SendMessageRequest.serializer()),
+                                telegramMessage(request.message.chat.id, inputText.toAppResponse()),
                                 ContentType.parse("application/json")
                             )
                         }

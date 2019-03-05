@@ -35,7 +35,7 @@ sealed class TelegramRequest {
 
     @Serializable
     data class SendMessageRequest(
-        val chat_id: Any,
+        val chat_id: String,
         val text: String,
         @Optional val parse_mode: String? = null,
         @Optional val disable_web_page_preview: Boolean? = null,
@@ -655,7 +655,7 @@ object TelegramMethod {
      * @return [Message]
      * */
     fun sendMessage(
-        chat_id: Any,
+        chat_id: String,
         text: String,
         parse_mode: String? = null,
         disable_web_page_preview: Boolean? = null,
