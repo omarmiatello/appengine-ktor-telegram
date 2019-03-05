@@ -1,8 +1,7 @@
 package com.github.jacklt.gae.ktor.tg
 
-import com.github.jacklt.gae.ktor.tg.appengine.telegram.UpdateMessageText
-import com.github.jacklt.gae.ktor.tg.appengine.telegram.WebhookUpdateMessage
-import com.github.jacklt.gae.ktor.tg.config.AppConfig
+import com.github.jacklt.gae.ktor.tg.appengine.telegram.TelegramRequest
+import com.github.jacklt.gae.ktor.tg.appengine.telegram.Update
 import com.github.jacklt.gae.ktor.tg.utils.toJson
 import io.ktor.application.Application
 import io.ktor.application.call
@@ -19,8 +18,6 @@ import io.ktor.routing.post
 import io.ktor.routing.route
 import io.ktor.routing.routing
 import kotlinx.serialization.json.JSON
-
-val telegram = AppConfig.getDefault().telegram
 
 /**
  * Entry Point of the application. This function is referenced in the
@@ -46,18 +43,17 @@ fun Application.main() {
 
         route("webhook") {
             post("telegram") {
-                val request = JSON.nonstrict.parse(WebhookUpdateMessage.serializer(), call.receiveText())
+                val request = JSON.nonstrict.parse(Update.serializer(), call.receiveText())
 
                 when {
                     request.message != null -> {
                         val inputText = request.message.text
                         if (inputText != null) {
-                            listOf<String>().asSequence()
                             call.respondText(
-                                UpdateMessageText(
+                                TelegramRequest.SendMessageRequest(
                                     request.message.chat.id,
                                     inputText.toAppResponse()
-                                ).toJson(UpdateMessageText.serializer()),
+                                ).toJson(TelegramRequest.SendMessageRequest.serializer()),
                                 ContentType.parse("application/json")
                             )
                         }
