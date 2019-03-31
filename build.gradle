@@ -42,6 +42,8 @@ dependencies {
     // implementation "com.google.apis:google-api-services-calendar:v3-rev361-1.25.0"
     // implementation "com.google.firebase:firebase-admin:6.6.0"
 
+    implementation 'com.github.jacklt:yeelight-kt:1.0.0'
+
     // Socket needed. Do not work on App Engine
     // https://cloud.google.com/appengine/docs/standard/java/sockets/
     // https://cloud.google.com/solutions/using-firebase-real-time-events-app-engine
