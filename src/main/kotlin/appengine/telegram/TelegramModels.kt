@@ -1,6 +1,6 @@
 package com.github.jacklt.gae.ktor.tg.appengine.telegram
 
-import kotlinx.serialization.Optional
+import kotlinx.serialization.ContextualSerialization
 import kotlinx.serialization.Serializable
 
 sealed class TelegramModel
@@ -603,7 +603,7 @@ data class InlineKeyboardButton(
     val callback_data: String? = null,
     val switch_inline_query: String? = null,
     val switch_inline_query_current_chat: String? = null,
-    val callback_game: Any? = null,
+    @ContextualSerialization val callback_game: Any? = null,
     val pay: Boolean? = null
 ) : TelegramModel()
 
@@ -781,7 +781,7 @@ data class InputMediaPhoto(
 data class InputMediaVideo(
     val type: String,
     val media: String,
-    val thumb: Any? = null,
+    @ContextualSerialization val thumb: Any? = null,
     val caption: String? = null,
     val parse_mode: String? = null,
     val width: Int? = null,
@@ -808,7 +808,7 @@ data class InputMediaVideo(
 data class InputMediaAnimation(
     val type: String,
     val media: String,
-    val thumb: Any? = null,
+    @ContextualSerialization val thumb: Any? = null,
     val caption: String? = null,
     val parse_mode: String? = null,
     val width: Int? = null,
@@ -834,7 +834,7 @@ data class InputMediaAnimation(
 data class InputMediaAudio(
     val type: String,
     val media: String,
-    val thumb: Any? = null,
+    @ContextualSerialization val thumb: Any? = null,
     val caption: String? = null,
     val parse_mode: String? = null,
     val duration: Int? = null,
@@ -857,7 +857,7 @@ data class InputMediaAudio(
 data class InputMediaDocument(
     val type: String,
     val media: String,
-    val thumb: Any? = null,
+    @ContextualSerialization val thumb: Any? = null,
     val caption: String? = null,
     val parse_mode: String? = null
 ) : InputMedia()
@@ -972,7 +972,7 @@ data class InlineQueryResultArticle(
     val type: String,
     val id: String,
     val title: String,
-    val input_message_content: InputMessageContent,
+    @ContextualSerialization val input_message_content: InputMessageContent,
     val reply_markup: InlineKeyboardMarkup? = null,
     val url: String? = null,
     val hide_url: Boolean? = null,
@@ -1013,7 +1013,7 @@ data class InlineQueryResultPhoto(
     val caption: String? = null,
     val parse_mode: String? = null,
     val reply_markup: InlineKeyboardMarkup? = null,
-    val input_message_content: InputMessageContent? = null
+    @ContextualSerialization val input_message_content: InputMessageContent? = null
 ) : InlineQueryResult()
 
 /**
@@ -1047,7 +1047,7 @@ data class InlineQueryResultGif(
     val caption: String? = null,
     val parse_mode: String? = null,
     val reply_markup: InlineKeyboardMarkup? = null,
-    val input_message_content: InputMessageContent? = null
+    @ContextualSerialization val input_message_content: InputMessageContent? = null
 ) : InlineQueryResult()
 
 /**
@@ -1081,7 +1081,7 @@ data class InlineQueryResultMpeg4Gif(
     val caption: String? = null,
     val parse_mode: String? = null,
     val reply_markup: InlineKeyboardMarkup? = null,
-    val input_message_content: InputMessageContent? = null
+    @ContextualSerialization val input_message_content: InputMessageContent? = null
 ) : InlineQueryResult()
 
 /**
@@ -1121,7 +1121,7 @@ data class InlineQueryResultVideo(
     val video_duration: Int? = null,
     val description: String? = null,
     val reply_markup: InlineKeyboardMarkup? = null,
-    val input_message_content: InputMessageContent? = null
+    @ContextualSerialization val input_message_content: InputMessageContent? = null
 ) : InlineQueryResult()
 
 /**
@@ -1151,7 +1151,7 @@ data class InlineQueryResultAudio(
     val performer: String? = null,
     val audio_duration: Int? = null,
     val reply_markup: InlineKeyboardMarkup? = null,
-    val input_message_content: InputMessageContent? = null
+    @ContextualSerialization val input_message_content: InputMessageContent? = null
 ) : InlineQueryResult()
 
 /**
@@ -1179,7 +1179,7 @@ data class InlineQueryResultVoice(
     val parse_mode: String? = null,
     val voice_duration: Int? = null,
     val reply_markup: InlineKeyboardMarkup? = null,
-    val input_message_content: InputMessageContent? = null
+    @ContextualSerialization val input_message_content: InputMessageContent? = null
 ) : InlineQueryResult()
 
 /**
@@ -1212,7 +1212,7 @@ data class InlineQueryResultDocument(
     val mime_type: String,
     val description: String? = null,
     val reply_markup: InlineKeyboardMarkup? = null,
-    val input_message_content: InputMessageContent? = null,
+    @ContextualSerialization val input_message_content: InputMessageContent? = null,
     val thumb_url: String? = null,
     val thumb_width: Int? = null,
     val thumb_height: Int? = null
@@ -1244,7 +1244,7 @@ data class InlineQueryResultLocation(
     val title: String,
     val live_period: Int? = null,
     val reply_markup: InlineKeyboardMarkup? = null,
-    val input_message_content: InputMessageContent? = null,
+    @ContextualSerialization val input_message_content: InputMessageContent? = null,
     val thumb_url: String? = null,
     val thumb_width: Int? = null,
     val thumb_height: Int? = null
@@ -1280,7 +1280,7 @@ data class InlineQueryResultVenue(
     val foursquare_id: String? = null,
     val foursquare_type: String? = null,
     val reply_markup: InlineKeyboardMarkup? = null,
-    val input_message_content: InputMessageContent? = null,
+    @ContextualSerialization val input_message_content: InputMessageContent? = null,
     val thumb_url: String? = null,
     val thumb_width: Int? = null,
     val thumb_height: Int? = null
@@ -1312,7 +1312,7 @@ data class InlineQueryResultContact(
     val last_name: String? = null,
     val vcard: String? = null,
     val reply_markup: InlineKeyboardMarkup? = null,
-    val input_message_content: InputMessageContent? = null,
+    @ContextualSerialization val input_message_content: InputMessageContent? = null,
     val thumb_url: String? = null,
     val thumb_width: Int? = null,
     val thumb_height: Int? = null
@@ -1361,7 +1361,7 @@ data class InlineQueryResultCachedPhoto(
     val caption: String? = null,
     val parse_mode: String? = null,
     val reply_markup: InlineKeyboardMarkup? = null,
-    val input_message_content: InputMessageContent? = null
+    @ContextualSerialization val input_message_content: InputMessageContent? = null
 ) : InlineQueryResult()
 
 /**
@@ -1387,7 +1387,7 @@ data class InlineQueryResultCachedGif(
     val caption: String? = null,
     val parse_mode: String? = null,
     val reply_markup: InlineKeyboardMarkup? = null,
-    val input_message_content: InputMessageContent? = null
+    @ContextualSerialization val input_message_content: InputMessageContent? = null
 ) : InlineQueryResult()
 
 /**
@@ -1413,7 +1413,7 @@ data class InlineQueryResultCachedMpeg4Gif(
     val caption: String? = null,
     val parse_mode: String? = null,
     val reply_markup: InlineKeyboardMarkup? = null,
-    val input_message_content: InputMessageContent? = null
+    @ContextualSerialization val input_message_content: InputMessageContent? = null
 ) : InlineQueryResult()
 
 /**
@@ -1433,7 +1433,7 @@ data class InlineQueryResultCachedSticker(
     val id: String,
     val sticker_file_id: String,
     val reply_markup: InlineKeyboardMarkup? = null,
-    val input_message_content: InputMessageContent? = null
+    @ContextualSerialization val input_message_content: InputMessageContent? = null
 ) : InlineQueryResult()
 
 /**
@@ -1461,7 +1461,7 @@ data class InlineQueryResultCachedDocument(
     val caption: String? = null,
     val parse_mode: String? = null,
     val reply_markup: InlineKeyboardMarkup? = null,
-    val input_message_content: InputMessageContent? = null
+    @ContextualSerialization val input_message_content: InputMessageContent? = null
 ) : InlineQueryResult()
 
 /**
@@ -1489,7 +1489,7 @@ data class InlineQueryResultCachedVideo(
     val caption: String? = null,
     val parse_mode: String? = null,
     val reply_markup: InlineKeyboardMarkup? = null,
-    val input_message_content: InputMessageContent? = null
+    @ContextualSerialization val input_message_content: InputMessageContent? = null
 ) : InlineQueryResult()
 
 /**
@@ -1515,7 +1515,7 @@ data class InlineQueryResultCachedVoice(
     val caption: String? = null,
     val parse_mode: String? = null,
     val reply_markup: InlineKeyboardMarkup? = null,
-    val input_message_content: InputMessageContent? = null
+    @ContextualSerialization val input_message_content: InputMessageContent? = null
 ) : InlineQueryResult()
 
 /**
@@ -1539,7 +1539,7 @@ data class InlineQueryResultCachedAudio(
     val caption: String? = null,
     val parse_mode: String? = null,
     val reply_markup: InlineKeyboardMarkup? = null,
-    val input_message_content: InputMessageContent? = null
+    @ContextualSerialization val input_message_content: InputMessageContent? = null
 ) : InlineQueryResult()
 
 /**

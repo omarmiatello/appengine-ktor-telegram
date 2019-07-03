@@ -17,7 +17,7 @@ import io.ktor.response.respondText
 import io.ktor.routing.post
 import io.ktor.routing.route
 import io.ktor.routing.routing
-import kotlinx.serialization.json.JSON
+import kotlinx.serialization.json.Json
 
 /**
  * Entry Point of the application. This function is referenced in the
@@ -49,7 +49,7 @@ fun Application.main() {
 
         route("webhook") {
             post("telegram") {
-                val request = JSON.nonstrict.parse(Update.serializer(), call.receiveText())
+                val request = Json.nonstrict.parse(Update.serializer(), call.receiveText())
 
                 when {
                     request.message != null -> {
