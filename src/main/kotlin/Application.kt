@@ -56,7 +56,7 @@ fun Application.main() {
                         val inputText = request.message.text
                         if (inputText != null) {
                             call.respondText(
-                                telegramMessage(request.message.chat.id, inputText.toAppResponse()),
+                                telegramMessage(request.message.chat.id, request.message.toAppResponse()),
                                 ContentType.parse("application/json")
                             )
                         }

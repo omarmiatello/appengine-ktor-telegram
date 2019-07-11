@@ -41,7 +41,7 @@ dependencies {
     implementation "com.google.appengine:appengine-api-1.0-sdk:$appengine_version"
     implementation "com.google.api-client:google-api-client-appengine:1.27.0"
     // implementation "com.google.apis:google-api-services-calendar:v3-rev361-1.25.0"
-    // implementation "com.google.firebase:firebase-admin:6.6.0"
+    implementation "com.google.firebase:firebase-admin:6.8.1"
 
     // Socket needed. Do not work on App Engine
     // https://cloud.google.com/appengine/docs/standard/java/sockets/
