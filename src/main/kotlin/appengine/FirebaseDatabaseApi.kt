@@ -23,8 +23,30 @@ import kotlin.reflect.KProperty
 @Serializable
 class PutResponse(val name: String)
 
-// The following methods are to illustrate making various calls to
-// Firebase from App Engine Standard
+// :: Firebase DB - Simplified mode ::
+// - Read example:
+//      FireDB.testString
+// - Write example:
+//      FireDB.testMap = mapOf("name" to "Vale")
+//      FireDB.testString = "test 👍"
+//      FireDB.lastMessage = message
+//
+// :: Firebase DB - Advanced mode ::
+// get: read a path
+//      FireDB["testString", String.serializer()]
+// set: write (and replace) the content of a path
+//      FireDB["testMap", (String.serializer() to String.serializer()).map] = mapOf("name" to "Vale")
+//      FireDB["testString", String.serializer()] = "test 👍"
+//      FireDB["lastMessage", Message.serializer()] = message
+// addItem: create a new ID and add an item to path!
+//      FireDB.addItem("pathExample", "test1", String.serializer())
+//      FireDB.addItem("pathExample", "test2", String.serializer())
+//      FireDB.addItem("pathExample", "test3", String.serializer())
+// update: update only some children of this path
+//      FireDB.update("pathExample", mapOf("campo2" to "2"), String.serializer())
+// delete: delete a path
+//      FireDB.delete("pathExample")
+
 abstract class FirebaseDatabaseApi {
     abstract val basePath: String
 
@@ -50,12 +72,12 @@ abstract class FirebaseDatabaseApi {
         }
     }
 
-    fun get(path: String) = requestFactory()
+    fun appengineGet(path: String) = requestFactory()
         .buildGetRequest(GenericUrl(path))
         .execute()
         .apply { if (!isSuccessStatusCode) throw HttpResponseException(this) }
 
-    private fun <T> post(path: String, obj: T, serializer: SerializationStrategy<T>) = requestFactory()
+    private fun <T> appenginePost(path: String, obj: T, serializer: SerializationStrategy<T>) = requestFactory()
         .buildPostRequest(
             GenericUrl(path),
             obj.toJsonContent(serializer)
@@ -63,7 +85,7 @@ abstract class FirebaseDatabaseApi {
         .execute()
         .parse(PutResponse.serializer())?.name
 
-    private fun <T> put(path: String, obj: T, serializer: SerializationStrategy<T>) = requestFactory()
+    private fun <T> appenginePut(path: String, obj: T, serializer: SerializationStrategy<T>) = requestFactory()
         .buildPutRequest(
             GenericUrl(path),
             obj.toJsonContent(serializer)
@@ -71,7 +93,7 @@ abstract class FirebaseDatabaseApi {
         .execute()
         .apply { if (!isSuccessStatusCode) throw HttpResponseException(this) }
 
-    private fun <T> patch(path: String, obj: T, serializer: SerializationStrategy<T>) = requestFactory()
+    private fun <T> appenginePatch(path: String, obj: T, serializer: SerializationStrategy<T>) = requestFactory()
         .buildPatchRequest(
             GenericUrl(path),
             obj.toJsonContent(serializer)
@@ -79,25 +101,53 @@ abstract class FirebaseDatabaseApi {
         .execute()
         .apply { if (!isSuccessStatusCode) throw HttpResponseException(this) }
 
-    private fun delete(path: String): HttpResponse = requestFactory()
+    private fun appengineDelete(path: String): HttpResponse = requestFactory()
         .buildDeleteRequest(GenericUrl(path))
         .execute()
         .apply { if (!isSuccessStatusCode) throw HttpResponseException(this) }
 
 
-    inline operator fun <reified T> get(path: String, resp: KSerializer<T>) =
-        get("$basePath$path.json").parse(resp)
+    inline operator fun <reified T> get(path: String, resp: KSerializer<T>): T? {
+        return if (isAppEngine) {
+            appengineGet("$basePath$path.json").parse(resp)
+        } else {
+            runBlocking {
+                FirebaseDatabase.getInstance().getReference(path).toDataSnapshot().toDataObject()
+            }
+        }
+    }
 
-    operator fun <T> set(path: String, serializer: KSerializer<T>, obj: T) =
-        put("$basePath$path.json", obj, serializer)
+    operator fun <T> set(path: String, serializer: KSerializer<T>, obj: T) {
+        if (isAppEngine) {
+            appenginePut("$basePath$path.json", obj, serializer)
+        } else {
+            FirebaseDatabase.getInstance().getReference(path).setValueAsync(obj).get()
+        }
+    }
 
-    protected fun <T> addItem(path: String, obj: T, serializer: KSerializer<T>) =
-        post("$basePath$path.json", obj, serializer)
+    fun <T> addItem(path: String, obj: T, serializer: KSerializer<T>) {
+        if (isAppEngine) {
+            appenginePost("$basePath$path.json", obj, serializer)
+        } else {
+            FirebaseDatabase.getInstance().getReference(path).push().setValueAsync(obj).get()
+        }
+    }
 
-    protected fun <T> update(path: String, map: Map<String, T>, serializer: KSerializer<T>) =
-        patch("$basePath$path.json", map, (String.serializer() to serializer).map)
+    fun <T> update(path: String, map: Map<String, T>, serializer: KSerializer<T>) {
+        if (isAppEngine) {
+            appenginePatch("$basePath$path.json", map, (String.serializer() to serializer).map)
+        } else {
+            FirebaseDatabase.getInstance().getReference(path).push().updateChildrenAsync(map).get()
+        }
+    }
 
-    protected fun deletePath(path: String) = delete("$basePath$path.json")
+    fun delete(path: String) {
+        if (isAppEngine) {
+            appengineDelete("$basePath$path.json")
+        } else {
+            FirebaseDatabase.getInstance().getReference(path).removeValueAsync().get()
+        }
+    }
 }
 
 inline fun <reified T> fireProperty(serializer: KSerializer<T>, key: String? = null, useCache: Boolean = true) =
@@ -186,18 +236,21 @@ inline fun <reified T> localFireDB(key: String?) =
 
 inline fun <reified T> localGet(key: String): T {
     return runBlocking {
-        Gson().run {
-            val value = FirebaseDatabase.getInstance().getReference(key).singleValue().value
-            fromJson<T>(toJson(value), typeTokenOf<T>())
-        }
+        // TODO runBlocking
+        FirebaseDatabase.getInstance().getReference(key).toDataSnapshot().toDataObject()
     }
+}
+
+val gson = Gson()
+inline fun <reified T> DataSnapshot.toDataObject(): T {
+    return gson.fromJson<T>(gson.toJson(value), typeTokenOf<T>())
 }
 
 inline fun <reified T> localSet(key: String, value: T) {
     FirebaseDatabase.getInstance().getReference(key).setValueAsync(value).get()
 }
 
-suspend fun DatabaseReference.singleValue(): DataSnapshot = suspendCancellableCoroutine { cont ->
+suspend fun DatabaseReference.toDataSnapshot(): DataSnapshot = suspendCancellableCoroutine { cont ->
     addListenerForSingleValueEvent(object : ValueEventListener {
         override fun onCancelled(error: DatabaseError?) {
             cont.resumeWithException(error!!.toException())
