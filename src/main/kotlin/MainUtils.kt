@@ -25,7 +25,7 @@ fun startApp() {
 
 fun Message.toAppResponse(): String {
     return try {
-        myApp(text.orEmpty(), this)
+        myApp(this)
     } catch (e: Exception) {
         "C'è stato un errore: ```\n${e.stackTraceString}\n```"
     }.ifBlank {

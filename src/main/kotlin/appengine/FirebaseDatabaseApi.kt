@@ -6,7 +6,16 @@ import com.google.api.client.http.GenericUrl
 import com.google.api.client.http.HttpRequestFactory
 import com.google.api.client.http.HttpResponse
 import com.google.api.client.http.HttpResponseException
+import com.google.auth.oauth2.GoogleCredentials
+import com.google.firebase.FirebaseApp
+import com.google.firebase.FirebaseOptions
+import com.google.firebase.database.*
+import com.google.gson.Gson
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.serialization.*
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 import kotlin.properties.ReadWriteProperty
 import kotlin.reflect.KProperty
 
@@ -29,6 +38,17 @@ abstract class FirebaseDatabaseApi {
             )
         )
     )
+
+    init {
+        if (!isAppEngine) {
+            FirebaseApp.initializeApp(
+                FirebaseOptions.Builder()
+                    .setCredentials(GoogleCredentials.getApplicationDefault())
+                    .setDatabaseUrl(basePath)
+                    .build()
+            )
+        }
+    }
 
     fun get(path: String) = requestFactory()
         .buildGetRequest(GenericUrl(path))
@@ -80,69 +100,111 @@ abstract class FirebaseDatabaseApi {
     protected fun deletePath(path: String) = delete("$basePath$path.json")
 }
 
-inline fun <reified T> fireProperty(key: String, serializer: KSerializer<T>, useCache: Boolean) =
-    object : ReadWriteProperty<FirebaseDatabaseApi, T?> {
-        override fun getValue(thisRef: FirebaseDatabaseApi, property: KProperty<*>): T? {
-            return if (useCache) {
-                val string = appEngineCacheFast.getOrPut("${thisRef.javaClass.canonicalName}.${property.name}") {
-                    json.stringify(serializer, thisRef[key, serializer]!!)
+inline fun <reified T> fireProperty(serializer: KSerializer<T>, key: String? = null, useCache: Boolean = true) =
+    if (isAppEngine) {
+        object : ReadWriteProperty<FirebaseDatabaseApi, T?> {
+            override fun getValue(thisRef: FirebaseDatabaseApi, property: KProperty<*>): T? {
+                return if (useCache) {
+                    val string = appEngineCacheFast.getOrPut("${thisRef.javaClass.canonicalName}.${property.name}") {
+                        json.stringify(serializer, thisRef[key ?: property.name, serializer]!!)
+                    }
+                    json.parse(serializer, string)
+                } else {
+                    thisRef[key ?: property.name, serializer]
                 }
-                json.parse(serializer, string)
-            } else {
-                thisRef[key, serializer]
+            }
+
+            override fun setValue(thisRef: FirebaseDatabaseApi, property: KProperty<*>, value: T?) {
+                if (useCache && value != null) {
+                    appEngineCacheFast["${thisRef.javaClass.canonicalName}.${property.name}"] =
+                        json.stringify(serializer, value)
+                }
+                thisRef[key ?: property.name, serializer] =
+                    value ?: throw IllegalArgumentException("Use deletePath() insted of set `null` in path: $key")
             }
         }
+    } else localFireDB<T?>(key)
 
-        override fun setValue(thisRef: FirebaseDatabaseApi, property: KProperty<*>, value: T?) {
-            if (useCache && value != null) {
-                appEngineCacheFast["${thisRef.javaClass.canonicalName}.${property.name}"] =
-                    json.stringify(serializer, value)
+inline fun <reified T> fireList(serializer: KSerializer<Collection<T>>, key: String? = null, useCache: Boolean = true) =
+    if (isAppEngine) {
+        object : ReadWriteProperty<FirebaseDatabaseApi, Collection<T>> {
+            override fun getValue(thisRef: FirebaseDatabaseApi, property: KProperty<*>): Collection<T> {
+                return if (useCache) {
+                    val string = appEngineCacheFast.getOrPut("${thisRef.javaClass.canonicalName}.${property.name}") {
+                        json.stringify(serializer, thisRef[key ?: property.name, serializer].orEmpty())
+                    }
+                    json.parse(serializer, string)
+                } else {
+                    thisRef[key ?: property.name, serializer].orEmpty()
+                }
             }
-            thisRef[key, serializer] =
-                value ?: throw IllegalArgumentException("Use deletePath() insted of set `null` in path: $key")
+
+            override fun setValue(thisRef: FirebaseDatabaseApi, property: KProperty<*>, value: Collection<T>) {
+                if (useCache) {
+                    appEngineCacheFast["${thisRef.javaClass.canonicalName}.${property.name}"] =
+                        json.stringify(serializer, value)
+                }
+                thisRef[key ?: property.name, serializer] = value
+            }
+        }
+    } else localFireDB<Collection<T>>(key)
+
+inline fun <reified T> fireMap(serializer: KSerializer<Map<String, T>>, key: String? = null, useCache: Boolean = true) =
+    if (isAppEngine) {
+        object : ReadWriteProperty<FirebaseDatabaseApi, Map<String, T>> {
+            override fun getValue(thisRef: FirebaseDatabaseApi, property: KProperty<*>): Map<String, T> {
+                return if (useCache) {
+                    val string = appEngineCacheFast.getOrPut("${thisRef.javaClass.canonicalName}.${property.name}") {
+                        json.stringify(serializer, thisRef[key ?: property.name, serializer].orEmpty())
+                    }
+                    json.parse(serializer, string)
+                } else {
+                    thisRef[key ?: property.name, serializer].orEmpty()
+                }
+            }
+
+            override fun setValue(thisRef: FirebaseDatabaseApi, property: KProperty<*>, value: Map<String, T>) {
+                if (useCache) {
+                    appEngineCacheFast["${thisRef.javaClass.canonicalName}.${property.name}"] =
+                        json.stringify(serializer, value)
+                }
+                thisRef[key ?: property.name, serializer] = value
+            }
+        }
+    } else localFireDB<Map<String, T>>(key)
+
+inline fun <reified T> localFireDB(key: String?) =
+    object : ReadWriteProperty<Any, T> {
+        override fun getValue(thisRef: Any, property: KProperty<*>): T {
+            return localGet(key ?: property.name)
+        }
+
+        override fun setValue(thisRef: Any, property: KProperty<*>, value: T) {
+            localSet(key ?: property.name, value)
         }
     }
 
-inline fun <reified T> fireList(key: String, serializer: KSerializer<Collection<T>>, useCache: Boolean) =
-    object : ReadWriteProperty<FirebaseDatabaseApi, Collection<T>> {
-        override fun getValue(thisRef: FirebaseDatabaseApi, property: KProperty<*>): Collection<T> {
-            return if (useCache) {
-                val string = appEngineCacheFast.getOrPut("${thisRef.javaClass.canonicalName}.${property.name}") {
-                    json.stringify(serializer, thisRef[key, serializer].orEmpty())
-                }
-                json.parse(serializer, string)
-            } else {
-                thisRef[key, serializer].orEmpty()
-            }
-        }
-
-        override fun setValue(thisRef: FirebaseDatabaseApi, property: KProperty<*>, value: Collection<T>) {
-            if (useCache) {
-                appEngineCacheFast["${thisRef.javaClass.canonicalName}.${property.name}"] =
-                    json.stringify(serializer, value)
-            }
-            thisRef[key, serializer] = value
+inline fun <reified T> localGet(key: String): T {
+    return runBlocking {
+        Gson().run {
+            val value = FirebaseDatabase.getInstance().getReference(key).singleValue().value
+            fromJson<T>(toJson(value), typeTokenOf<T>())
         }
     }
+}
 
-inline fun <reified T> fireMap(key: String, serializer: KSerializer<Map<String, T>>, useCache: Boolean) =
-    object : ReadWriteProperty<FirebaseDatabaseApi, Map<String, T>> {
-        override fun getValue(thisRef: FirebaseDatabaseApi, property: KProperty<*>): Map<String, T> {
-            return if (useCache) {
-                val string = appEngineCacheFast.getOrPut("${thisRef.javaClass.canonicalName}.${property.name}") {
-                    json.stringify(serializer, thisRef[key, serializer].orEmpty())
-                }
-                json.parse(serializer, string)
-            } else {
-                thisRef[key, serializer].orEmpty()
-            }
+inline fun <reified T> localSet(key: String, value: T) {
+    FirebaseDatabase.getInstance().getReference(key).setValueAsync(value).get()
+}
+
+suspend fun DatabaseReference.singleValue(): DataSnapshot = suspendCancellableCoroutine { cont ->
+    addListenerForSingleValueEvent(object : ValueEventListener {
+        override fun onCancelled(error: DatabaseError?) {
+            cont.resumeWithException(error!!.toException())
         }
 
-        override fun setValue(thisRef: FirebaseDatabaseApi, property: KProperty<*>, value: Map<String, T>) {
-            if (useCache) {
-                appEngineCacheFast["${thisRef.javaClass.canonicalName}.${property.name}"] =
-                    json.stringify(serializer, value)
-            }
-            thisRef[key, serializer] = value
+        override fun onDataChange(snapshot: DataSnapshot?) {
+            cont.resume(snapshot!!)
         }
-    }
+    })
+}
