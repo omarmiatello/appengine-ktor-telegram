@@ -112,7 +112,7 @@ abstract class FirebaseDatabaseApi {
             appengineGet("$basePath$path.json").parse(resp)
         } else {
             runBlocking {
-                FirebaseDatabase.getInstance().getReference(path).toDataSnapshot().toDataObject()
+                FirebaseDatabase.getInstance().getReference(path).toDataSnapshot().toDataObject<T>()
             }
         }
     }
@@ -237,7 +237,7 @@ inline fun <reified T> localFireDB(key: String?) =
 inline fun <reified T> localGet(key: String): T {
     return runBlocking {
         // TODO runBlocking
-        FirebaseDatabase.getInstance().getReference(key).toDataSnapshot().toDataObject()
+        FirebaseDatabase.getInstance().getReference(key).toDataSnapshot().toDataObject<T>()
     }
 }
 
